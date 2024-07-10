@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { CHAT_CHANNEL } from "../../../constants/redis";
+import { CHAT_CHANNEL } from "../../../constant/redis";
 import asyncHandler from "express-async-handler";
 import { redis } from "../../../index";
 

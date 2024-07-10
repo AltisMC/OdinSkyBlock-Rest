@@ -9,6 +9,7 @@ import logger from "morgan";
 
 dotenv.config();
 
+const redis = new Redis(process.env.REDIS_URI!);
 const port = process.env.PORT || 3000;
 const app = express();
 
@@ -21,7 +22,7 @@ app.use("/api/v1/invite", inviteRoute);
 app.use("/api/v1/message", messageRoute);
 
 mongoose
-  .connect(process.env.MONGO_URI || "MONGO URI NOT FOUND")
+  .connect(process.env.MONGO_URI!)
   .then(() => {
     app.listen(port, () => {
       console.log(`Server running on port ${port}`);
@@ -32,4 +33,4 @@ mongoose
     console.log(err.message);
   });
 
-export const redis = new Redis(process.env.REDIS_URI || "REDIS URI NOT FOUND");
+export { redis };
