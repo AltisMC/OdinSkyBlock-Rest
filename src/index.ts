@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import inviteRoute from "./api/v1/invite/invite.route";
 import messageRoute from "./api/v1/message/message.route";
 import serverRoute from "./api/v1/server/server.route";
+import playerRoute from "./api/v1/player/player.route";
 import secretChecker from "./middleware/secret";
 import logger from "morgan";
 import { SERVERS_KEY, PLAYERS_KEY } from "./constant/redis";
@@ -24,6 +25,7 @@ app.use(secretChecker);
 app.use("/api/v1/invite", inviteRoute);
 app.use("/api/v1/message", messageRoute);
 app.use("/api/v1/server", serverRoute);
+app.use("/api/v1/player", playerRoute);
 
 mongoose
   .connect(process.env.MONGO_URI!)
