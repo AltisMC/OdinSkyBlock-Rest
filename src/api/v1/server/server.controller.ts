@@ -60,8 +60,8 @@ const getLeastBusiest = asyncHandler(
           continue;
         }
 
-        const players = await redis.smembers(
-          PLAYERS_KEY.replace("<server-name>", server.name)
+        const players = Object.entries(
+          await redis.hgetall(PLAYERS_KEY.replace("<server-name>", server.name))
         );
 
         if (players.length >= server.limit && !req.body.bypass) {
@@ -79,7 +79,6 @@ const getLeastBusiest = asyncHandler(
         res
           .status(404)
           .json({ message: "Seems like all of the servers are full!" });
-        console.log("returned");
         return;
       }
 
