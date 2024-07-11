@@ -1,5 +1,9 @@
 import { Request, Response, NextFunction } from "express";
-import { SERVERS_KEY, PLAYERS_KEY } from "../../../constant/redis";
+import {
+  ISLAND_UNLOAD_CHANNEL,
+  ISLANDS_KEY,
+  PLAYERS_KEY,
+} from "../../../constant/redis";
 import asyncHandler from "express-async-handler";
 import { redis } from "../../../index";
 import { Server } from "./server.model";
@@ -7,10 +11,16 @@ import { Server } from "./server.model";
 const addServer = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const server = Server.check(req.body);
-      redis.hset(SERVERS_KEY, server.name, JSON.stringify(server));
-      // clear the player list as well, can be helpful in case of a crash
-      redis.del(PLAYERS_KEY.replace("<server-name>", server.name));
+      const server = new Server(req.body);
+      const validateErr = server.validateSync();
+      if (validateErr) {
+        res.status(500).json(validateErr);
+        return;
+      }
+
+      await Server.replaceOne({ name: req.body.name }, req.body, {
+        upsert: true,
+      });
 
       res.status(200).json(server);
     } catch (e) {
@@ -22,9 +32,16 @@ const addServer = asyncHandler(
 const removeServer = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      redis.hdel(SERVERS_KEY, req.params.name);
-      // clear the player list as well, can be helpful in case of a crash
+      await Server.deleteOne({ name: req.params.name });
+      // clear the player and island list as well, can be helpful in case of a crash
       redis.del(PLAYERS_KEY.replace("<server-name>", req.params.name));
+
+      const islandsData = Object.entries(await redis.hgetall(ISLANDS_KEY));
+      for (let index = 0; index < islandsData.length; index++) {
+        const data = islandsData[index]; // island's unique ID
+        redis.hdel(ISLANDS_KEY, data[0]);
+        redis.publish(ISLAND_UNLOAD_CHANNEL, data[0]);
+      }
 
       res.status(200).json({ message: "Server removed successfully!" });
     } catch (e) {
@@ -36,8 +53,8 @@ const removeServer = asyncHandler(
 const getAll = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const servers = Object.entries(await redis.hgetall(SERVERS_KEY));
-      res.status(200).json(servers.map((s) => JSON.parse(s[1])));
+      const servers = await Server.find();
+      res.status(200).json(servers);
     } catch (e) {
       res.status(500).json(e);
     }
@@ -48,15 +65,15 @@ const getAll = asyncHandler(
 const getLeastBusiest = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const servers = Object.entries(await redis.hgetall(SERVERS_KEY));
-      var leastBusiestServer = null;
-      var min = Number.MAX_SAFE_INTEGER;
-      for (let index = 0; index < servers.length; index++) {
-        const data = servers[index];
-        const server = Server.check(JSON.parse(data[1]));
-        if (server.spawn && !req.body.spawn) {
+      const servers = await Server.find();
+      let leastBusiestServer = null;
+      let min = Number.MAX_SAFE_INTEGER;
+      for (const server of servers) {
+        if (server.dead) continue;
+
+        if (server.spawnServer && !req.body.spawn) {
           continue;
-        } else if (!server.spawn && req.body.spawn) {
+        } else if (!server.spawnServer && req.body.spawn) {
           continue;
         }
 
@@ -92,18 +109,17 @@ const getLeastBusiest = asyncHandler(
 const ping = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const redisData = await redis.hget(SERVERS_KEY, req.params.name);
-      if (!redisData) {
+      const server = await Server.findOne({ name: req.params.name });
+      if (!server) {
         res
           .status(404)
-          .json({ message: `Server not found for ${req.params.player}` });
+          .json({ message: `Server not found for ${req.params.name}` });
         return;
       }
 
-      const server = Server.check(JSON.parse(redisData));
       server.lastPing = Date.now();
-
-      redis.hset(SERVERS_KEY, server.name, JSON.stringify(server));
+      server.isNew = false;
+      server.save();
 
       res.status(200).json(server);
     } catch (e) {

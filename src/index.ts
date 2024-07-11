@@ -52,15 +52,18 @@ const markDead = parseInt(process.env.MARK_DEAD_DELAY!);
 
 async function checkHeartbeats() {
   const now = Date.now();
-  const servers = Object.entries(await redis.hgetall(SERVERS_KEY));
+  const servers = await Server.find();
   const islandsData = Object.entries(await redis.hgetall(ISLANDS_KEY));
-  servers.map(async (data) => {
-    const server = Server.check(JSON.parse(data[1]));
+  for (const server of servers) {
+    if (server.dead) continue;
+
     if (now - server.lastPing > markDead) {
       console.log(
         `marking server "${server.name}" as dead. server was last pinged at: ${server.lastPing}`
       );
-      redis.hdel(SERVERS_KEY, server.name);
+      server.isNew = false;
+      server.dead = true;
+      server.save();
       redis.del(PLAYERS_KEY.replace("<server-name>", server.name));
 
       for (let index = 0; index < islandsData.length; index++) {
@@ -69,7 +72,7 @@ async function checkHeartbeats() {
         redis.publish(ISLAND_UNLOAD_CHANNEL, data[0]);
       }
     }
-  });
+  }
   setTimeout(checkHeartbeats, checkDelay);
 }
 
