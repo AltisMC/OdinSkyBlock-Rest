@@ -8,10 +8,10 @@ import serverRoute from "./api/v1/server/server.route";
 import playerRoute from "./api/v1/player/player.route";
 import islandRoute from "./api/v1/island/island.route";
 import memberRoute from "./api/v1/member/member.route";
+import permissionRoute from "./api/v1/permission/permission.route";
 import secretChecker from "./middleware/secret";
 import logger from "morgan";
 import {
-  SERVERS_KEY,
   PLAYERS_KEY,
   ISLANDS_KEY,
   ISLAND_UNLOAD_CHANNEL,
@@ -36,6 +36,7 @@ app.use("/api/v1/server", serverRoute);
 app.use("/api/v1/player", playerRoute);
 app.use("/api/v1/island", islandRoute);
 app.use("/api/v1/member", memberRoute);
+app.use("/api/v1/permission", permissionRoute);
 
 mongoose
   .connect(process.env.MONGO_URI!)
