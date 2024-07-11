@@ -45,7 +45,7 @@ const reply = asyncHandler(
         accepted: req.body.accepted,
       });
 
-      redis.del(INVITE_KEY.replace("<player-uuid>", json.player.player));
+      redis.del(INVITE_KEY.replace("<player-uuid>", json.player));
       redis.publish(INVITE_REPLY_CHANNEL, JSON.stringify(data));
 
       res.status(200).json(req.body);
