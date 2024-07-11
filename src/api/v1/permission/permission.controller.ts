@@ -15,7 +15,6 @@ const updatePermissions = asyncHandler(
 
       for (let index = 0; index < permissions.length; index++) {
         const permission = permissions[index];
-        console.log(permission);
         Permission.replaceOne(
           {
             islandId: permission.islandId,
