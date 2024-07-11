@@ -7,6 +7,7 @@ import messageRoute from "./api/v1/message/message.route";
 import serverRoute from "./api/v1/server/server.route";
 import playerRoute from "./api/v1/player/player.route";
 import islandRoute from "./api/v1/island/island.route";
+import memberRoute from "./api/v1/member/member.route";
 import secretChecker from "./middleware/secret";
 import logger from "morgan";
 import {
@@ -16,7 +17,7 @@ import {
   ISLAND_UNLOAD_CHANNEL,
 } from "./constant/redis";
 import { Server } from "./api/v1/server/server.model";
-import { Island } from "./api/v1/island/island.model";
+import { Member } from "./api/v1/member/member.model";
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ app.use("/api/v1/message", messageRoute);
 app.use("/api/v1/server", serverRoute);
 app.use("/api/v1/player", playerRoute);
 app.use("/api/v1/island", islandRoute);
+app.use("/api/v1/member", memberRoute);
 
 mongoose
   .connect(process.env.MONGO_URI!)
@@ -70,6 +72,7 @@ async function checkHeartbeats() {
         const data = islandsData[index]; // island's unique ID
         redis.hdel(ISLANDS_KEY, data[0]);
         redis.publish(ISLAND_UNLOAD_CHANNEL, data[0]);
+        Member.deleteMany({ islandId: data[0] });
       }
     }
   }

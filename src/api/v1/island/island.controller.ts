@@ -10,6 +10,7 @@ import {
 import asyncHandler from "express-async-handler";
 import { redis } from "../../../index";
 import { Island } from "./island.model";
+import { Member } from "../member/member.model";
 
 // island is created but not loaded
 const createIsland = asyncHandler(
@@ -79,6 +80,8 @@ const deleteIsland = asyncHandler(
     try {
       redis.hdel(ISLANDS_KEY, req.body.uniqueId);
       redis.publish(ISLAND_DELETE_CHANNEL, req.body.uniqueId);
+
+      Member.deleteMany({ islandId: req.body.uniqueId });
 
       const deleted = await Island.deleteOne({ uniqueId: req.body.uniqueId });
       if (deleted.deletedCount > 0) {

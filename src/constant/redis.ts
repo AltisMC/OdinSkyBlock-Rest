@@ -24,3 +24,6 @@ export const ISLAND_LOAD_REPLY_CHANNEL = "thoxia:skyblock:island:load:reply"; //
 export const ISLAND_CREATE_CHANNEL = "thoxia:skyblock:island:create";
 export const ISLAND_CREATE_REPLY_CHANNEL =
   "thoxia:skyblock:island:create:reply"; // not used in the rest
+
+// stuff related to member system
+export const ISLAND_MEMBER_UPDATE_CHANNEL = "thoxia:skyblock:island:member";
