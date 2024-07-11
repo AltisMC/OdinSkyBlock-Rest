@@ -6,10 +6,17 @@ import inviteRoute from "./api/v1/invite/invite.route";
 import messageRoute from "./api/v1/message/message.route";
 import serverRoute from "./api/v1/server/server.route";
 import playerRoute from "./api/v1/player/player.route";
+import islandRoute from "./api/v1/island/island.route";
 import secretChecker from "./middleware/secret";
 import logger from "morgan";
-import { SERVERS_KEY, PLAYERS_KEY } from "./constant/redis";
+import {
+  SERVERS_KEY,
+  PLAYERS_KEY,
+  ISLANDS_KEY,
+  ISLAND_UNLOAD_CHANNEL,
+} from "./constant/redis";
 import { Server } from "./api/v1/server/server.model";
+import { Island } from "./api/v1/island/island.model";
 
 dotenv.config();
 
@@ -26,6 +33,7 @@ app.use("/api/v1/invite", inviteRoute);
 app.use("/api/v1/message", messageRoute);
 app.use("/api/v1/server", serverRoute);
 app.use("/api/v1/player", playerRoute);
+app.use("/api/v1/island", islandRoute);
 
 mongoose
   .connect(process.env.MONGO_URI!)
@@ -45,7 +53,7 @@ const markDead = parseInt(process.env.MARK_DEAD_DELAY!);
 async function checkHeartbeats() {
   const now = Date.now();
   const servers = Object.entries(await redis.hgetall(SERVERS_KEY));
-  servers.map((data) => {
+  servers.map(async (data) => {
     const server = Server.check(JSON.parse(data[1]));
     if (now - server.lastPing > markDead) {
       console.log(
@@ -53,6 +61,13 @@ async function checkHeartbeats() {
       );
       redis.hdel(SERVERS_KEY, server.name);
       redis.del(PLAYERS_KEY.replace("<server-name>", server.name));
+
+      const islandsData = Object.entries(await redis.hgetall(ISLANDS_KEY));
+      for (let index = 0; index < islandsData.length; index++) {
+        const data = islandsData[index]; // island's unique ID
+        redis.hdel(ISLANDS_KEY, data[0]);
+        redis.publish(ISLAND_UNLOAD_CHANNEL, data[0]);
+      }
     }
   });
   setTimeout(checkHeartbeats, checkDelay);

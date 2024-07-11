@@ -14,3 +14,13 @@ export const SERVERS_KEY = "thoxia:skyblock:servers";
 
 // stuff related to player system
 export const PLAYERS_KEY = "thoxia:skyblock:players:<server-name>";
+
+// stuff related to island system
+export const ISLANDS_KEY = "thoxia:skyblock:islands";
+export const ISLAND_DELETE_CHANNEL = "thoxia:skyblock:island:delete";
+export const ISLAND_UNLOAD_CHANNEL = "thoxia:skyblock:island:unload";
+export const ISLAND_LOAD_CHANNEL = "thoxia:skyblock:island:load";
+export const ISLAND_LOAD_REPLY_CHANNEL = "thoxia:skyblock:island:load:reply"; // not used in the rest
+export const ISLAND_CREATE_CHANNEL = "thoxia:skyblock:island:create";
+export const ISLAND_CREATE_REPLY_CHANNEL =
+  "thoxia:skyblock:island:create:reply"; // not used in the rest
