@@ -6,12 +6,15 @@ import {
   unloadIsland,
   loadIsland,
   createIsland,
+  getAll,
+  get,
 } from "./island.controller";
 
 const router = express.Router();
 
 router.get<{}, {}>("/", getLoadedIslands);
-router.get<{}, {}>("/:server", getLoadedIslands);
+router.get<{}, {}>("/all", getAll);
+router.get<{}, {}>("/:id", get);
 router.put<{}, {}>("/", loadIsland);
 router.put<{}, {}>("/create", createIsland);
 router.post<{}, {}>("/", saveIsland);

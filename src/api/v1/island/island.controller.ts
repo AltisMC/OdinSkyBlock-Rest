@@ -112,13 +112,33 @@ const saveIsland = asyncHandler(
   }
 );
 
+const getAll = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.status(200).json(await Island.find());
+    } catch (e) {
+      res.status(500).json(e);
+    }
+  }
+);
+
+const get = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.status(200).json(await Island.findOne({ uniqueId: req.params.id }));
+    } catch (e) {
+      res.status(500).json(e);
+    }
+  }
+);
+
 const getLoadedIslands = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       let islands: any = [];
       const islandsData = Object.entries(await redis.hgetall(ISLANDS_KEY));
 
-      if (!req.params.server) {
+      if (!req.body.server) {
         for (let index = 0; index < islandsData.length; index++) {
           const data = islandsData[index];
           islands.push({ islandId: data[0], server: data[1] });
@@ -126,7 +146,7 @@ const getLoadedIslands = asyncHandler(
       } else {
         for (let index = 0; index < islandsData.length; index++) {
           const data = islandsData[index];
-          if (data[1] != req.params.server) continue;
+          if (data[1] != req.body.server) continue;
 
           islands.push({ islandId: data[0], server: data[1] });
         }
@@ -146,4 +166,6 @@ export {
   unloadIsland,
   loadIsland,
   createIsland,
+  getAll,
+  get,
 };
