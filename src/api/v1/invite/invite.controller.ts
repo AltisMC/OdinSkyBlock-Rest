@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import { INVITE_KEY, INVITE_REPLY_CHANNEL } from "../../../constant/redis";
 import asyncHandler from "express-async-handler";
 import { redis } from "../../../index";
+import { Invite } from "./invite.model";
+import { InviteReply } from "./invitereply.model";
 
 const get = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -36,17 +38,15 @@ const reply = asyncHandler(
         return;
       }
 
-      const data = JSON.parse(redisData);
+      const json = JSON.parse(redisData);
+      const data = InviteReply.check({
+        player: json.player,
+        island: json.island,
+        accepted: req.body.accepted,
+      });
 
-      redis.del(INVITE_KEY.replace("<player-uuid>", req.params.player));
-      redis.publish(
-        INVITE_REPLY_CHANNEL,
-        JSON.stringify({
-          player: data.player,
-          island: data.island,
-          accepted: req.body.accepted,
-        })
-      );
+      redis.del(INVITE_KEY.replace("<player-uuid>", json.player.player));
+      redis.publish(INVITE_REPLY_CHANNEL, JSON.stringify(data));
 
       res.status(200).json(req.body);
     } catch (e) {
@@ -68,14 +68,15 @@ const create = asyncHandler(
         return;
       }
 
+      const invite = Invite.check(req.body);
       redis.set(
-        INVITE_KEY.replace("<player-uuid>", req.body.player),
-        JSON.stringify(req.body),
+        INVITE_KEY.replace("<player-uuid>", invite.player),
+        JSON.stringify(invite),
         "EX",
-        req.body.time
+        invite.time
       );
 
-      res.status(201).json(req.body);
+      res.status(201).json(invite);
     } catch (e) {
       res.status(500).json(e);
     }

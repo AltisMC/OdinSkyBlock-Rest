@@ -1,5 +1,7 @@
-export interface Invite {
-  player: string;
-  island: string;
-  accepted: boolean;
-}
+import { Boolean, String, Record } from "runtypes";
+
+export const InviteReply = Record({
+  player: String,
+  island: String,
+  accepted: Boolean,
+});

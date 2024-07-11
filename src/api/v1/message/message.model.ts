@@ -1,5 +1,7 @@
-export interface Chat {
-  player: string;
-  island: string;
-  message: string;
-}
+import { String, Record } from "runtypes";
+
+export const Message = Record({
+  player: String,
+  island: String,
+  message: String,
+});
