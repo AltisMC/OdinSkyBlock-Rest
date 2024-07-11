@@ -81,7 +81,7 @@ const deleteIsland = asyncHandler(
       redis.hdel(ISLANDS_KEY, req.body.uniqueId);
       redis.publish(ISLAND_DELETE_CHANNEL, req.body.uniqueId);
 
-      Member.deleteMany({ islandId: req.body.uniqueId });
+      Member.deleteMany({ islandId: req.body.uniqueId }).exec();
 
       const deleted = await Island.deleteOne({ uniqueId: req.body.uniqueId });
       if (deleted.deletedCount > 0) {
