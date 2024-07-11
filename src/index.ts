@@ -53,6 +53,7 @@ const markDead = parseInt(process.env.MARK_DEAD_DELAY!);
 async function checkHeartbeats() {
   const now = Date.now();
   const servers = Object.entries(await redis.hgetall(SERVERS_KEY));
+  const islandsData = Object.entries(await redis.hgetall(ISLANDS_KEY));
   servers.map(async (data) => {
     const server = Server.check(JSON.parse(data[1]));
     if (now - server.lastPing > markDead) {
@@ -62,7 +63,6 @@ async function checkHeartbeats() {
       redis.hdel(SERVERS_KEY, server.name);
       redis.del(PLAYERS_KEY.replace("<server-name>", server.name));
 
-      const islandsData = Object.entries(await redis.hgetall(ISLANDS_KEY));
       for (let index = 0; index < islandsData.length; index++) {
         const data = islandsData[index]; // island's unique ID
         redis.hdel(ISLANDS_KEY, data[0]);
