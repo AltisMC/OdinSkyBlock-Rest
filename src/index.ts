@@ -11,6 +11,7 @@ import memberRoute from "./api/v1/member/member.route";
 import permissionRoute from "./api/v1/permission/permission.route";
 import upgradeRoute from "./api/v1/upgrade/upgrade.route";
 import bankRoute from "./api/v1/bank/bank.route";
+import playerRoute from "./api/v1/player/player.route";
 import secretChecker from "./middleware/secret";
 import logger from "morgan";
 import {
@@ -41,6 +42,7 @@ app.use("/api/v1/member", memberRoute);
 app.use("/api/v1/permission", permissionRoute);
 app.use("/api/v1/upgrade", upgradeRoute);
 app.use("/api/v1/bank", bankRoute);
+app.use("/api/v1/player", playerRoute);
 
 mongoose
   .connect(process.env.MONGO_URI!)

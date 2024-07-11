@@ -3,6 +3,7 @@ import { ISLAND_MEMBER_UPDATE_CHANNEL } from "../../../constant/redis";
 import asyncHandler from "express-async-handler";
 import { redis } from "../../../index";
 import { Member } from "./member.model";
+import { Player } from "../player/player.model";
 
 const updateMember = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -22,6 +23,11 @@ const updateMember = asyncHandler(
         }
       );
 
+      await Player.updateOne(
+        { uniqueId: req.body.playerId },
+        { islandId: req.body.islandId, role: req.body.role }
+      );
+
       redis.publish(ISLAND_MEMBER_UPDATE_CHANNEL, JSON.stringify(member));
 
       res.status(200).json(req.body);
@@ -35,6 +41,10 @@ const clearMembers = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await Member.deleteMany({ islandId: req.params.islandId });
+      await Player.updateMany(
+        { islandId: req.params.islandId },
+        { islandId: null, role: null }
+      );
       res
         .status(200)
         .json({ message: `Cleared members of island ${req.params.islandId}` });
@@ -52,6 +62,11 @@ const removeMember = asyncHandler(
         playerId: req.params.playerId,
       });
       if (deleted.deletedCount > 0) {
+        await Player.updateOne(
+          { uniqueId: req.body.playerId },
+          { islandId: null, role: null }
+        );
+
         res.status(200).json({
           message: `Removed member from island ${req.params.islandId}`,
         });
