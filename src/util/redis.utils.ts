@@ -1,4 +1,9 @@
-import { PLAYERS_KEY } from "../constant/redis";
+import {
+  INVITE_CHANNEL,
+  INVITE_KEY,
+  INVITE_REPLY_CHANNEL,
+  PLAYERS_KEY,
+} from "../constant/redis";
 import { redis } from "../index";
 
 // METHODS RELATED TO PLAYER CACHE
@@ -36,4 +41,28 @@ export async function clearPlayersCache(server?: string) {
 
 export async function addPlayerToCache(player: any) {
   await redis.hset(PLAYERS_KEY, player.uniqueId, JSON.stringify(player));
+}
+
+// METHODS RELATED TO INVITE SYSTEM
+
+export async function getInvite(playerId: string): Promise<string | null> {
+  return await redis.get(INVITE_KEY.replace("<player-uuid>", playerId));
+}
+
+export async function removeInvite(playerId: string) {
+  await redis.del(INVITE_KEY.replace("<player-uuid>", playerId));
+}
+
+export async function replyToInvite(inviteReply: any) {
+  await redis.publish(INVITE_REPLY_CHANNEL, JSON.stringify(inviteReply));
+}
+
+export async function invitePlayer(invite: any) {
+  await redis.set(
+    INVITE_KEY.replace("<player-uuid>", invite.player),
+    JSON.stringify(invite),
+    "EX",
+    invite.time
+  );
+  await redis.publish(INVITE_CHANNEL, JSON.stringify(invite)); // let the player know they were invited
 }

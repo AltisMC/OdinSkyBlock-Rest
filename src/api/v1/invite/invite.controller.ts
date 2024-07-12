@@ -4,13 +4,17 @@ import asyncHandler from "express-async-handler";
 import { redis } from "../../../index";
 import { Invite } from "./invite.model";
 import { InviteReply } from "./invitereply.model";
+import {
+  getInvite,
+  invitePlayer,
+  removeInvite,
+  replyToInvite,
+} from "../../../util/redis.utils";
 
 const get = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const redisData = await redis.get(
-        INVITE_KEY.replace("<player-uuid>", req.params.player)
-      );
+      const redisData = await getInvite(req.params.player);
       if (!redisData) {
         res
           .status(404)
@@ -28,9 +32,7 @@ const get = asyncHandler(
 const reply = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const redisData = await redis.get(
-        INVITE_KEY.replace("<player-uuid>", req.params.player)
-      );
+      const redisData = await getInvite(req.params.player);
       if (!redisData) {
         res
           .status(404)
@@ -45,8 +47,8 @@ const reply = asyncHandler(
         accepted: req.body.accepted,
       });
 
-      redis.del(INVITE_KEY.replace("<player-uuid>", json.player));
-      redis.publish(INVITE_REPLY_CHANNEL, JSON.stringify(data));
+      await removeInvite(json.player);
+      await replyToInvite(data);
 
       res.status(200).json(req.body);
     } catch (e) {
@@ -58,9 +60,7 @@ const reply = asyncHandler(
 const create = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const redisData = await redis.get(
-        INVITE_KEY.replace("<player-uuid>", req.body.player)
-      );
+      const redisData = await getInvite(req.body.player);
       if (redisData) {
         res
           .status(409)
@@ -69,12 +69,7 @@ const create = asyncHandler(
       }
 
       const invite = Invite.check(req.body);
-      redis.set(
-        INVITE_KEY.replace("<player-uuid>", invite.player),
-        JSON.stringify(invite),
-        "EX",
-        invite.time
-      );
+      invitePlayer(invite);
 
       res.status(201).json(invite);
     } catch (e) {

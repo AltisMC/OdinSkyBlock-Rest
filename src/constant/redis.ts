@@ -4,6 +4,7 @@
 
 // stuff related to invitation system
 export const INVITE_KEY = "thoxia:skyblock:invites:<player-uuid>";
+export const INVITE_CHANNEL = "thoxia:skyblock:invite";
 export const INVITE_REPLY_CHANNEL = "thoxia:skyblock:invite:reply";
 
 // stuff related to chat system
