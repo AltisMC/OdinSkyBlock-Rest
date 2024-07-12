@@ -16,7 +16,7 @@ router.get<{}, {}>("/", getLoadedIslands);
 router.get<{}, {}>("/all", getAll);
 router.get<{}, {}>("/:id", get);
 router.put<{}, {}>("/", loadIsland);
-router.put<{}, {}>("/create", createIsland);
+router.put<{}, {}>("/create/:server", createIsland);
 router.post<{}, {}>("/", saveIsland);
 router.delete<{}, {}>("/unload", unloadIsland);
 router.delete<{}, {}>("/", deleteIsland);
