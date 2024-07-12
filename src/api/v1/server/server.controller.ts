@@ -29,6 +29,27 @@ const addServer = asyncHandler(
   }
 );
 
+const disableServer = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await Server.updateOne({ name: req.params.name }, { dead: true });
+      // clear the player and island list as well, can be helpful in case of a crash
+      redis.del(PLAYERS_KEY.replace("<server-name>", req.params.name));
+
+      const islandsData = Object.entries(await redis.hgetall(ISLANDS_KEY));
+      for (let index = 0; index < islandsData.length; index++) {
+        const data = islandsData[index]; // island's unique ID
+        redis.hdel(ISLANDS_KEY, data[0]);
+        redis.publish(ISLAND_UNLOAD_CHANNEL, data[0]);
+      }
+
+      res.status(200).json({ message: "Server disabled successfully!" });
+    } catch (e) {
+      res.status(500).json(e);
+    }
+  }
+);
+
 const removeServer = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -128,4 +149,11 @@ const ping = asyncHandler(
   }
 );
 
-export { addServer, ping, getLeastBusiest, getAll, removeServer };
+export {
+  addServer,
+  ping,
+  getLeastBusiest,
+  getAll,
+  removeServer,
+  disableServer,
+};
