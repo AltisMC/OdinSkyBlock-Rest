@@ -13,7 +13,7 @@ export const CHAT_CHANNEL = "thoxia:skyblock:chat";
 export const SERVERS_KEY = "thoxia:skyblock:servers";
 
 // stuff related to player system
-export const PLAYERS_KEY = "thoxia:skyblock:players:<server-name>";
+export const PLAYERS_KEY = "thoxia:skyblock:players";
 
 // stuff related to island system
 export const ISLANDS_KEY = "thoxia:skyblock:islands";
