@@ -33,6 +33,17 @@ const createIsland = asyncHandler(
         upsert: true,
       });
 
+      redis.hset(ISLANDS_KEY, island.uniqueId, req.params.server);
+      redis.publish(
+        ISLAND_LOAD_CHANNEL,
+        JSON.stringify(
+          IslandInfo.check({
+            uniqueId: island.uniqueId,
+            server: req.params.server,
+          })
+        )
+      );
+
       res.status(200).json(req.body);
     } catch (e) {
       res.status(500).json(e);
@@ -54,6 +65,22 @@ const loadIsland = asyncHandler(
       redis.publish(ISLAND_LOAD_CHANNEL, JSON.stringify(island));
 
       res.status(200).json(island);
+    } catch (e) {
+      res.status(500).json(e);
+    }
+  }
+);
+
+const getLoadedServer = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const loadedServer = await redis.hget(ISLANDS_KEY, req.params.id);
+      if (!loadedServer) {
+        res.status(404).json({ message: "Island is not loaded!" });
+        return;
+      }
+
+      res.status(200).json({ server: loadedServer });
     } catch (e) {
       res.status(500).json(e);
     }

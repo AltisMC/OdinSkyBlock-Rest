@@ -23,7 +23,7 @@ export const ISLAND_LOAD_CHANNEL = "thoxia:skyblock:island:load";
 export const ISLAND_LOAD_REPLY_CHANNEL = "thoxia:skyblock:island:load:reply"; // not used in the rest
 export const ISLAND_CREATE_CHANNEL = "thoxia:skyblock:island:create";
 export const ISLAND_CREATE_REPLY_CHANNEL =
-  "thoxia:skyblock:island:create:reply"; // not used in the rest
+  "thoxia:skyblock:island:create:reply"; // not used in the rest, creator server will MUST publish a message
 
 // stuff related to member system
 export const ISLAND_MEMBER_UPDATE_CHANNEL = "thoxia:skyblock:island:member";
