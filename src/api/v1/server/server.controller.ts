@@ -71,9 +71,9 @@ const getLeastBusiest = asyncHandler(
       for (const server of servers) {
         if (server.dead) continue;
 
-        if (server.spawnServer && !req.body.spawn) {
+        if (server.spawnServer && !Boolean(req.query.spawn)) {
           continue;
-        } else if (!server.spawnServer && req.body.spawn) {
+        } else if (!server.spawnServer && Boolean(req.query.spawn)) {
           continue;
         }
 
@@ -81,7 +81,7 @@ const getLeastBusiest = asyncHandler(
           await redis.hgetall(PLAYERS_KEY.replace("<server-name>", server.name))
         );
 
-        if (players.length >= server.limit && !req.body.bypass) {
+        if (players.length >= server.limit && !Boolean(req.query.bypass)) {
           continue;
         }
 
