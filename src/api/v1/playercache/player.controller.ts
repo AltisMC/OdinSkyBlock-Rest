@@ -1,20 +1,18 @@
 import { Player } from "./player.model";
 import { Request, Response, NextFunction } from "express";
-import { SERVERS_KEY, PLAYERS_KEY } from "../../../constant/redis";
 import asyncHandler from "express-async-handler";
-import { redis } from "../../../index";
-import { Server } from "../server/server.model";
+import {
+  addPlayerToCache,
+  clearPlayersCache,
+  getPlayersFromCache,
+  removePlayerFromCache,
+} from "../../../util/redis.utils";
 
 const addPlayer = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const player = Player.check(req.body);
-      redis.hset(
-        PLAYERS_KEY.replace("<server-name>", player.server),
-        player.uniqueId,
-        JSON.stringify(player)
-      );
-
+      await addPlayerToCache(player);
       res.status(200).json(player);
     } catch (e) {
       res.status(500).json(e);
@@ -25,13 +23,8 @@ const addPlayer = asyncHandler(
 const removePlayer = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const player = Player.check(req.body);
-      redis.srem(
-        PLAYERS_KEY.replace("<server-name>", player.uniqueId),
-        JSON.stringify(player)
-      );
-
-      res.status(200).json(player);
+      await removePlayerFromCache(req.params.playerId);
+      res.status(200).json({ message: "Removed player" });
     } catch (e) {
       res.status(500).json(e);
     }
@@ -41,28 +34,23 @@ const removePlayer = asyncHandler(
 const getPlayers = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (!req.params.server) {
-        const servers = Object.entries(await redis.hgetall(SERVERS_KEY));
-        for (let index = 0; index < servers.length; index++) {
-          const data = servers[index];
-          const players = Object.entries(
-            await redis.hgetall(PLAYERS_KEY.replace("<server-name>", data[0]))
-          );
-          res.status(200).json(players.map((server) => JSON.parse(server[1])));
-          return;
-        }
-      }
-
-      const players = Object.entries(
-        await redis.hgetall(
-          PLAYERS_KEY.replace("<server-name>", req.params.server)
-        )
-      );
-      res.status(200).json(players.map((server) => JSON.parse(server[1])));
+      const players = await getPlayersFromCache(req.params.server);
+      res.status(200).json(players);
     } catch (e) {
       res.status(500).json(e);
     }
   }
 );
 
-export { getPlayers, addPlayer, removePlayer };
+const clearPlayers = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await clearPlayersCache(req.params.server);
+      res.status(200).json({ message: "Cleared players cache!" });
+    } catch (e) {
+      res.status(500).json(e);
+    }
+  }
+);
+
+export { getPlayers, addPlayer, removePlayer, clearPlayers };
