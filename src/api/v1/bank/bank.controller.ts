@@ -2,18 +2,22 @@ import { Request, Response, NextFunction } from "express";
 import asyncHandler from "express-async-handler";
 import { BankHistory } from "./bank.history.model";
 import { Bank } from "./bank.model";
+import {
+  saveBank as saveBankToMongo,
+  saveBankHistory as saveBankHistoryToMongo,
+  clearBankHistory as clearBankHistoryFromMongo,
+  getBank as getBankFromMongo,
+  getBankHistory as getBankHistoryFromMongo,
+} from "../../../util/mongo.utils";
 
 const saveBank = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      Bank.replaceOne({ islandId: req.body.islandId }, req.body, {
-        upsert: true,
-        bypassDocumentValidation: false,
-      }).exec(); // can be run async, no need to wait
-
+      await saveBankToMongo(req.body);
       res.status(200).json(req.body);
     } catch (e) {
-      res.status(500).json(e);
+      // for some idiotic reason, printing out "e" return an empty object
+      if (e instanceof Error) res.status(500).json({ error: e.message });
     }
   }
 );
@@ -21,40 +25,10 @@ const saveBank = asyncHandler(
 const saveBankHistory = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      var histories = req.body;
-      if (!Array.isArray(histories)) {
-        res
-          .status(500)
-          .json({ message: "You must provide a bank history list!" });
-        return;
-      }
-
-      if (
-        histories.some((h) => {
-          return new BankHistory(h).validateSync();
-        })
-      ) {
-        res.status(500).json({
-          message: `Invalid bank history format was found!`,
-        });
-        return;
-      }
-
-      histories = histories.map((h) => {
-        return new BankHistory(h);
-      });
-
-      BankHistory.deleteMany({ islandId: req.params.islandId })
-        .exec()
-        .then(() => {
-          BankHistory.bulkSave(histories, {
-            bypassDocumentValidation: false,
-          });
-        });
-
-      res.status(200).json(histories);
+      await saveBankHistoryToMongo(req.params.islandId, req.body);
+      res.status(200).json(req.body);
     } catch (e) {
-      res.status(500).json(e);
+      if (e instanceof Error) res.status(500).json({ error: e.message });
     }
   }
 );
@@ -75,7 +49,7 @@ const clearHistory = asyncHandler(
 const clearBank = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      Bank.deleteOne({ islandId: req.params.islandId }).exec(); // can be run async, no need to wait
+      clearBankHistoryFromMongo(req.params.islandId); // no need for await
       res.status(200).json({
         message: `Cleared bank of island ${req.params.islandId}`,
       });
@@ -88,7 +62,7 @@ const clearBank = asyncHandler(
 const getBank = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const bank = await Bank.findOne({ islandId: req.params.islandId });
+      const bank = await getBankFromMongo(req.params.islandId);
       if (!bank) {
         res.status(404).json({
           message: `Could not find bank of island ${req.params.islandId}`,
@@ -106,9 +80,7 @@ const getBank = asyncHandler(
 const getBankHistory = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      res
-        .status(200)
-        .json(await BankHistory.find({ islandId: req.params.islandId }));
+      res.status(200).json(await getBankHistoryFromMongo(req.params.islandId));
     } catch (e) {
       res.status(500).json(e);
     }
