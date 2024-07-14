@@ -1,7 +1,13 @@
+import { IslandInfo } from "../api/v1/island/island.info.model";
 import {
   INVITE_CHANNEL,
   INVITE_KEY,
   INVITE_REPLY_CHANNEL,
+  ISLAND_CREATE_CHANNEL,
+  ISLAND_DELETE_CHANNEL,
+  ISLAND_LOAD_CHANNEL,
+  ISLAND_UNLOAD_CHANNEL,
+  ISLANDS_KEY,
   PLAYERS_KEY,
 } from "../constant/redis";
 import { redis } from "../index";
@@ -65,4 +71,73 @@ export async function invitePlayer(invite: any) {
     invite.time
   );
   await redis.publish(INVITE_CHANNEL, JSON.stringify(invite)); // let the player know they were invited
+}
+
+// METHODS RELATED TO ISLAND SYSTEM
+
+export async function getLoadedServer(id: string): Promise<string | null> {
+  const loadedServer = await redis.hget(ISLANDS_KEY, id);
+  if (!loadedServer) {
+    return null;
+  }
+
+  return loadedServer;
+}
+
+export async function unloadIsland(id: string) {
+  const loadedServer = await redis.hget(ISLANDS_KEY, id);
+  if (!loadedServer) {
+    throw Error("Island is not loaded!");
+  }
+
+  redis.hdel(ISLANDS_KEY, id);
+  redis.publish(ISLAND_UNLOAD_CHANNEL, id);
+}
+
+export async function deleteIsland(id: string) {
+  const loadedServer = await redis.hget(ISLANDS_KEY, id);
+  if (!loadedServer) {
+    throw Error("Island is not loaded!");
+  }
+
+  redis.hdel(ISLANDS_KEY, id);
+  redis.publish(ISLAND_DELETE_CHANNEL, id);
+}
+
+export async function loadIsland(island: any) {
+  await redis.hset(ISLANDS_KEY, island.uniqueId, island.server);
+  await redis.publish(ISLAND_LOAD_CHANNEL, JSON.stringify(island));
+}
+
+export async function createIsland(islandId: string, server: string) {
+  await redis.publish(
+    ISLAND_CREATE_CHANNEL,
+    JSON.stringify(
+      IslandInfo.check({
+        uniqueId: islandId,
+        server: server,
+      })
+    )
+  );
+}
+
+export async function getAllLoadedIslands(server?: string): Promise<[]> {
+  const islandsData = Object.entries(await redis.hgetall(ISLANDS_KEY));
+  let islands: any = [];
+
+  if (!server) {
+    for (let index = 0; index < islandsData.length; index++) {
+      const data = islandsData[index];
+      islands.push({ islandId: data[0], server: data[1] });
+    }
+  } else {
+    for (let index = 0; index < islandsData.length; index++) {
+      const data = islandsData[index];
+      if (data[1] != server) continue;
+
+      islands.push({ islandId: data[0], server: data[1] });
+    }
+  }
+
+  return islands;
 }

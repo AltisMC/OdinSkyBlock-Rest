@@ -1,49 +1,26 @@
 import { IslandInfo } from "./island.info.model";
 import { Request, Response, NextFunction } from "express";
-import {
-  ISLANDS_KEY,
-  ISLAND_LOAD_CHANNEL,
-  ISLAND_CREATE_CHANNEL,
-  ISLAND_DELETE_CHANNEL,
-  ISLAND_UNLOAD_CHANNEL,
-} from "../../../constant/redis";
 import asyncHandler from "express-async-handler";
-import { redis } from "../../../index";
-import { Island } from "./island.model";
-import { Member } from "../member/member.model";
+import {
+  getLoadedServer as getLoadedServerFromCache,
+  loadIsland as sendLoadPacket,
+  unloadIsland as sendUnloadPacket,
+  deleteIsland as sendDeletePacket,
+  getAllLoadedIslands,
+} from "../../../util/redis.utils";
+import {
+  deleteIsland as deleteIslandFromMongo,
+  createIsland as createIslandOnMongo,
+  saveIsland as saveIslandToMongo,
+  getAllIslands,
+  getIsland,
+} from "../../../util/mongo.utils";
 
 // island is created but not loaded
 const createIsland = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const redisIsland = await redis.hget(ISLANDS_KEY, req.body.uniqueId);
-      if (redisIsland) {
-        res.status(409).json({ message: "Island already exists!" });
-        return;
-      }
-
-      const island = new Island(req.body);
-      const validateErr = island.validateSync();
-      if (validateErr) {
-        res.status(500).json(validateErr);
-        return;
-      }
-
-      await Island.replaceOne({ uniqueId: req.body.uniqueId }, req.body, {
-        upsert: true,
-      });
-
-      redis.hset(ISLANDS_KEY, island.uniqueId, req.params.server);
-      redis.publish(
-        ISLAND_LOAD_CHANNEL,
-        JSON.stringify(
-          IslandInfo.check({
-            uniqueId: island.uniqueId,
-            server: req.params.server,
-          })
-        )
-      );
-
+      createIslandOnMongo(req.body, req.params.server);
       res.status(200).json(req.body);
     } catch (e) {
       res.status(500).json(e);
@@ -55,15 +32,13 @@ const loadIsland = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const island = IslandInfo.check(req.body);
-      const redisIsland = await redis.hget(ISLANDS_KEY, island.uniqueId);
-      if (redisIsland) {
-        res.status(409).json({ message: "Island already exists!" });
+      const loadedIsland = await getLoadedServerFromCache(island.uniqueId);
+      if (loadedIsland) {
+        res.status(409).json({ message: "Island already loaded!" });
         return;
       }
 
-      redis.hset(ISLANDS_KEY, island.uniqueId, island.server);
-      redis.publish(ISLAND_LOAD_CHANNEL, JSON.stringify(island));
-
+      sendLoadPacket(island);
       res.status(200).json(island);
     } catch (e) {
       res.status(500).json(e);
@@ -74,7 +49,7 @@ const loadIsland = asyncHandler(
 const getLoadedServer = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const loadedServer = await redis.hget(ISLANDS_KEY, req.params.id);
+      const loadedServer = await getLoadedServerFromCache(req.params.id);
       if (!loadedServer) {
         res.status(404).json({ message: "Island is not loaded!" });
         return;
@@ -90,12 +65,10 @@ const getLoadedServer = asyncHandler(
 const unloadIsland = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      redis.hdel(ISLANDS_KEY, req.body.uniqueId);
-      redis.publish(ISLAND_UNLOAD_CHANNEL, req.body.uniqueId);
-
-      res
-        .status(200)
-        .json({ message: `Successfully unloaded Island ${req.body.uniqueId}` });
+      sendUnloadPacket(req.params.islandId);
+      res.status(200).json({
+        message: `Successfully unloaded Island ${req.params.islandId}`,
+      });
     } catch (e) {
       res.status(500).json(e);
     }
@@ -105,13 +78,9 @@ const unloadIsland = asyncHandler(
 const deleteIsland = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      redis.hdel(ISLANDS_KEY, req.body.uniqueId);
-      redis.publish(ISLAND_DELETE_CHANNEL, req.body.uniqueId);
-
-      Member.deleteMany({ islandId: req.body.uniqueId }).exec();
-
-      const deleted = await Island.deleteOne({ uniqueId: req.body.uniqueId });
-      if (deleted.deletedCount > 0) {
+      sendDeletePacket(req.params.islandId);
+      const deleted = await deleteIslandFromMongo(req.params.islandId);
+      if (deleted > 0) {
         res.status(200).json({
           message: `Successfully deleted Island ${req.body.uniqueId}`,
         });
@@ -129,10 +98,7 @@ const deleteIsland = asyncHandler(
 const saveIsland = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await Island.replaceOne({ uniqueId: req.body.uniqueId }, req.body, {
-        upsert: true,
-      });
-
+      saveIslandToMongo(req.body);
       res
         .status(200)
         .json({ message: `Successfully saved island ${req.body.uniqueId}` });
@@ -145,7 +111,7 @@ const saveIsland = asyncHandler(
 const getAll = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      res.status(200).json(await Island.find());
+      res.status(200).json(await getAllIslands());
     } catch (e) {
       res.status(500).json(e);
     }
@@ -155,7 +121,7 @@ const getAll = asyncHandler(
 const get = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      res.status(200).json(await Island.findOne({ uniqueId: req.params.id }));
+      res.status(200).json(await getIsland(req.params.id));
     } catch (e) {
       res.status(500).json(e);
     }
@@ -165,24 +131,7 @@ const get = asyncHandler(
 const getLoadedIslands = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      let islands: any = [];
-      const islandsData = Object.entries(await redis.hgetall(ISLANDS_KEY));
-
-      if (!req.body.server) {
-        for (let index = 0; index < islandsData.length; index++) {
-          const data = islandsData[index];
-          islands.push({ islandId: data[0], server: data[1] });
-        }
-      } else {
-        for (let index = 0; index < islandsData.length; index++) {
-          const data = islandsData[index];
-          if (data[1] != req.body.server) continue;
-
-          islands.push({ islandId: data[0], server: data[1] });
-        }
-      }
-
-      res.status(200).json(islands);
+      res.status(200).json(await getAllLoadedIslands(req.params.server));
     } catch (e) {
       res.status(500).json(e);
     }
@@ -198,4 +147,5 @@ export {
   createIsland,
   getAll,
   get,
+  getLoadedServer,
 };
