@@ -1,7 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { INVITE_KEY, INVITE_REPLY_CHANNEL } from "../../../constant/redis";
 import asyncHandler from "express-async-handler";
-import { redis } from "../../../index";
 import { Invite } from "./invite.model";
 import { InviteReply } from "./invitereply.model";
 import {
